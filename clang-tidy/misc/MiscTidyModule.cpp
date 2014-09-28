@@ -13,6 +13,7 @@
 #include "ArgumentCommentCheck.h"
 #include "BoolPointerImplicitConversion.h"
 #include "FunctionSize.h"
+#include "QualifiersOrder.h"
 #include "RedundantSmartptrGet.h"
 #include "SwappedArgumentsCheck.h"
 #include "UndelegatedConstructor.h"
@@ -29,6 +30,8 @@ public:
     CheckFactories.registerCheck<BoolPointerImplicitConversion>(
         "misc-bool-pointer-implicit-conversion");
     CheckFactories.registerCheck<FunctionSizeCheck>("misc-function-size");
+    CheckFactories.registerCheck<QualifiersOrder>(
+        "misc-qualifiers-order");
     CheckFactories.registerCheck<RedundantSmartptrGet>(
         "misc-redundant-smartptr-get");
     CheckFactories.registerCheck<SwappedArgumentsCheck>(

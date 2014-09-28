@@ -1,5 +1,6 @@
 #include "ClangTidyTest.h"
 #include "misc/ArgumentCommentCheck.h"
+#include "misc/QualifiersOrder.h"
 #include "gtest/gtest.h"
 
 namespace clang {
@@ -33,6 +34,19 @@ TEST(ArgumentCommentCheckTest, OtherEditDistanceAboveThreshold) {
 TEST(ArgumentCommentCheckTest, OtherEditDistanceBelowThreshold) {
   EXPECT_NO_CHANGES(ArgumentCommentCheck,
                     "void f(int xxx, int yyy); void g() { f(/*xxy=*/0, 0); }");
+}
+
+TEST(QualifiersOrderTest, Basic) {
+  EXPECT_NO_CHANGES(QualifiersOrder, "int i;\n"
+                                       "const int ci = 0;\n"
+                                       "int const ic = 0;\n"
+                                       "int *ip;\n"
+                                       "const int *cip;\n" // F
+                                       "int const *icp;\n" // F
+                                       "int &ir = i;\n"
+                                       "const int &cir = ci;\n" // F
+                                       "int const &icr = ic;\n" // F
+                                       );
 }
 
 } // namespace test

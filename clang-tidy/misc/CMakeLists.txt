@@ -5,6 +5,7 @@ add_clang_library(clangTidyMiscModule
   BoolPointerImplicitConversion.cpp
   FunctionSize.cpp
   MiscTidyModule.cpp
+  QualifiersOrder.cpp
   RedundantSmartptrGet.cpp
   SwappedArgumentsCheck.cpp
   UndelegatedConstructor.cpp
