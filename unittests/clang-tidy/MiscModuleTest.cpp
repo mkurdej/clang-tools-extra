@@ -5,7 +5,7 @@
 #include "gtest/gtest.h"
 
 // RUN: echo '{ Checks: "-*,misc-qualifiers-order"}' > %t/.clang-tidy
-// RUN: echo '{ Checks: "-*,misc-qualifiers-order", CheckOptions: [{key: misc-qualifiers-order.QualifierAlignment, value: "Left"}]}' > %t/.clang-tidy
+// RUN: echo '{ Checks: "-*,misc-qualifiers-order", CheckOptions: [{key: misc-qualifiers-order.QualifierAlignment, value: Left}]}' > %t/.clang-tidy
 
 namespace clang {
 namespace tidy {
