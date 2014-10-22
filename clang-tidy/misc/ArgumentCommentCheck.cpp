@@ -57,7 +57,7 @@ ArgumentCommentCheck::getCommentsInRange(ASTContext *Ctx, SourceRange Range) {
                  Buffer.begin(), StrData, Buffer.end());
   TheLexer.SetCommentRetentionState(true);
 
-  while (true) {
+  for (;;) {
     Token Tok;
     if (TheLexer.LexFromRawLexer(Tok))
       break;

@@ -121,6 +121,7 @@ public:
 private:
   std::string NamePrefix;
   const ClangTidyOptions::OptionMap &CheckOptions;
+  OptionsView &operator=(const OptionsView &) = delete;
 };
 
 /// \brief Base class for all clang-tidy checks.
@@ -162,7 +163,7 @@ public:
   ///
   /// This should be used for clang-tidy checks that analyze preprocessor-
   /// dependent properties, e.g. the order of include directives.
-  virtual void registerPPCallbacks(CompilerInstance &Compiler) {}
+  virtual void registerPPCallbacks(CompilerInstance & /*Compiler*/) {}
 
   /// \brief Overwrite this to register ASTMatchers with \p Finder.
   ///
@@ -176,11 +177,11 @@ public:
   /// If you need to merge information between the different matchers, you can
   /// store these as members of the derived class. However, note that all
   /// matches occur in the order of the AST traversal.
-  virtual void registerMatchers(ast_matchers::MatchFinder *Finder) {}
+  virtual void registerMatchers(ast_matchers::MatchFinder * /*Finder*/) {}
 
   /// \brief \c ClangTidyChecks that register ASTMatchers should do the actual
   /// work in here.
-  virtual void check(const ast_matchers::MatchFinder::MatchResult &Result) {}
+  virtual void check(const ast_matchers::MatchFinder::MatchResult & /*Result*/) {}
 
   /// \brief Add a diagnostic with the check's name.
   DiagnosticBuilder diag(SourceLocation Loc, StringRef Description,
@@ -191,7 +192,7 @@ public:
   ///
   /// The check should use \c Options.store() to store each option it supports
   /// whether it has the default value or it has been overridden.
-  virtual void storeOptions(ClangTidyOptions::OptionMap &Options) {}
+  virtual void storeOptions(ClangTidyOptions::OptionMap & /*Options*/) {}
 
 private:
   void run(const ast_matchers::MatchFinder::MatchResult &Result) override;
@@ -200,6 +201,7 @@ private:
 
 protected:
   OptionsView Options;
+  ClangTidyCheck &operator=(const ClangTidyCheck &) = delete;
 };
 
 class ClangTidyCheckFactories;
