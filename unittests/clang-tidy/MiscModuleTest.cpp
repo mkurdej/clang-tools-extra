@@ -1,6 +1,6 @@
 #include "ClangTidyTest.h"
 #include "misc/ArgumentCommentCheck.h"
-#include "misc/BracesAroundStatementsCheck.h"
+#include "readability/BracesAroundStatementsCheck.h"
 #include "misc/QualifiersOrder.h"
 #include "gtest/gtest.h"
 
@@ -9,6 +9,9 @@
 
 namespace clang {
 namespace tidy {
+
+using readability::BracesAroundStatementsCheck;
+
 namespace test {
 
 #define EXPECT_NO_CHANGES(Check, Code)                                         \

@@ -1,4 +1,4 @@
-// RUN: $(dirname %s)/check_clang_tidy_fix.sh %s misc-qualifiers-order %t -config="{CheckOptions: [{key: misc-qualifiers-order.QualifierAlignment, value: Right}]}" --
+// RUN: $(dirname %s)/check_clang_tidy.sh %s misc-qualifiers-order %t -config="{CheckOptions: [{key: misc-qualifiers-order.QualifierAlignment, value: Right}]}" --
 // REQUIRES: shell
 
 // CVROrder

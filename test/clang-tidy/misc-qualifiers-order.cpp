@@ -1,4 +1,4 @@
-// RUN: $(dirname %s)/check_clang_tidy_fix.sh %s misc-qualifiers-order %t --
+// RUN: $(dirname %s)/check_clang_tidy.sh %s misc-qualifiers-order %t --
 // REQUIRES: shell
 
 // CVROrder

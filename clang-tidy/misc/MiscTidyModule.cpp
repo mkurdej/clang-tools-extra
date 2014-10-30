@@ -12,10 +12,7 @@
 #include "../ClangTidyModuleRegistry.h"
 #include "ArgumentCommentCheck.h"
 #include "BoolPointerImplicitConversion.h"
-#include "BracesAroundStatementsCheck.h"
-#include "FunctionSize.h"
 #include "QualifiersOrder.h"
-#include "RedundantSmartptrGet.h"
 #include "SwappedArgumentsCheck.h"
 #include "UndelegatedConstructor.h"
 #include "UnusedRAII.h"
@@ -30,13 +27,8 @@ public:
     CheckFactories.registerCheck<ArgumentCommentCheck>("misc-argument-comment");
     CheckFactories.registerCheck<BoolPointerImplicitConversion>(
         "misc-bool-pointer-implicit-conversion");
-    CheckFactories.registerCheck<BracesAroundStatementsCheck>(
-        "misc-braces-around-statements");
-    CheckFactories.registerCheck<FunctionSizeCheck>("misc-function-size");
     CheckFactories.registerCheck<QualifiersOrder>(
         "misc-qualifiers-order");
-    CheckFactories.registerCheck<RedundantSmartptrGet>(
-        "misc-redundant-smartptr-get");
     CheckFactories.registerCheck<SwappedArgumentsCheck>(
         "misc-swapped-arguments");
     CheckFactories.registerCheck<UndelegatedConstructorCheck>(
