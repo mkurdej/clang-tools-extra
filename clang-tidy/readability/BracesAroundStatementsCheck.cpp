@@ -168,7 +168,7 @@ SourceLocation
 BracesAroundStatementsCheck::findRParenLoc(const IfOrWhileStmt *S,
                                            const SourceManager &SM,
                                            const ASTContext *Context) {
-  // Skip macros
+  // Skip macros.
   if (S->getLocStart().isMacroID())
     return SourceLocation();
 
@@ -215,12 +215,16 @@ bool BracesAroundStatementsCheck::checkStmt(
     // Already inside braces.
     return false;
   }
-  // Skip macros.
-  if (S->getLocStart().isMacroID())
-    return false;
 
   const SourceManager &SM = *Result.SourceManager;
   const ASTContext *Context = Result.Context;
+
+  // Treat macros.
+  CharSourceRange FileRange = Lexer::makeFileCharRange(
+      CharSourceRange::getTokenRange(S->getSourceRange()), SM,
+      Context->getLangOpts());
+  if (FileRange.isInvalid())
+    return false;
 
   // InitialLoc points at the last token before opening brace to be inserted.
   assert(InitialLoc.isValid());
@@ -233,7 +237,8 @@ bool BracesAroundStatementsCheck::checkStmt(
     EndLoc = EndLocHint;
     ClosingInsertion = "} ";
   } else {
-    EndLoc = findEndLocation(S->getLocEnd(), SM, Context);
+    const auto FREnd = FileRange.getEnd().getLocWithOffset(-1);
+    EndLoc = findEndLocation(FREnd, SM, Context);
     ClosingInsertion = "\n}";
   }
 
