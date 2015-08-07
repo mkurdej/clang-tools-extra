@@ -20,6 +20,7 @@ add_clang_library(clangTidyMiscModule
   UnusedRAIICheck.cpp
   UniqueptrResetReleaseCheck.cpp
   UseOverrideCheck.cpp
+  UseUsingCheck.cpp
 
   LINK_LIBS
   clangAST
