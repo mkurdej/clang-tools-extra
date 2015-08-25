@@ -15,8 +15,10 @@ using namespace clang::ast_matchers;
 
 namespace clang {
 namespace tidy {
+namespace misc {
 
 void CppformatArgumentsCheck::registerMatchers(MatchFinder *Finder) {
+  // FIXME: same for print, print_colored
   Finder->addMatcher(
       callExpr(callee(expr(ignoringParenImpCasts(
                    declRefExpr(to(functionDecl(hasName("::fmt::format"))))
@@ -27,17 +29,63 @@ void CppformatArgumentsCheck::registerMatchers(MatchFinder *Finder) {
 
 void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *Call = Result.Nodes.getNodeAs<CallExpr>("call");
-  if (!Call)
-    return;
+  const auto *DeclRef = Result.Nodes.getNodeAs<DeclRefExpr>("declref");
+  assert(Call);
+  assert(DeclRef);
+
+  const SourceManager *SM = Result.SourceManager;
+  const LangOptions &LangOpts = Result.Context->getLangOpts();
+  const TargetInfo &Target = Result.Context->getTargetInfo();
 
   SourceLocation BeginLoc = Call->getLocStart();
   if (BeginLoc.isInvalid())
     return;
 
-  diag(BeginLoc, "function '%0' is insufficiently awesome")
-      << Call->getName()
-      << FixItHint::CreateInsertion(BeginLoc, "awesome_");
+  unsigned IgnoreNumArgs = 0;
+  // FIXME(marek): skip arguments up to the CStringRef/WStringRef
+  // 0 for format
+  // 0 or 1 for print (can be void/FILE*/ostream&)
+  // 1 for print_colored
+  unsigned NumArgs = Call->getNumArgs();
+  
+  if (NumArgs < IgnoreNumArgs)
+    return;
+
+  const Expr *Arg = Call->getArg(IgnoreNumArgs)->IgnoreImpCasts();
+  const StringLiteral *FormatStringArg = dyn_cast<StringLiteral>(Arg);
+  if (!FormatStringArg)
+    return;
+
+  const StringRef FormatString = FormatStringArg->getBytes();
+
+  // Check format string.
+  size_t NumArgsInString;
+  SmallVector<size_t, 3> ArgsInString;
+  size_t Pos = FormatString.find('{', /*From=*/0u);
+  while (Pos != StringRef::npos) {
+    // FIXME(marek): Check if the '{' was escaped.
+    size_t EndPos = FormatString.find('}', /*From=*/Pos + 1u);
+    size_t OldPos = Pos;
+    Pos = FormatString.find('{', /*From=*/Pos + 1u);
+
+    if ((EndPos == StringRef::npos) ||
+        ((Pos != StringRef::npos) && (Pos < EndPos))) {
+      SourceLocation OpeningBraceLoc =
+          FormatStringArg->getLocationOfByte(OldPos, *SM, LangOpts, Target);
+      diag(OpeningBraceLoc, "incorrect format string: unclosed curly brace")
+          << FixItHint::CreateInsertion(OpeningBraceLoc.getLocWithOffset(1),
+                                        "}");
+    }
+
+    ;
+  }
+
+  //diag(BeginLoc, "function has '%0' arguments and is insufficiently awesome: "
+  //               "fmt string '%1'")
+  //    << NumArgs << FormatString
+  //    << FixItHint::CreateInsertion(BeginLoc, "awesome_");
 }
 
+} // namespace misc
 } // namespace tidy
 } // namespace clang
