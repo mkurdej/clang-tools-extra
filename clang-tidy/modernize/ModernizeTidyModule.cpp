@@ -15,6 +15,7 @@
 #include "ReplaceAutoPtrCheck.h"
 #include "UseAutoCheck.h"
 #include "UseNullptrCheck.h"
+#include "UseUsingCheck.h"
 
 using namespace clang::ast_matchers;
 
@@ -31,6 +32,7 @@ public:
         "modernize-replace-auto-ptr");
     CheckFactories.registerCheck<UseAutoCheck>("modernize-use-auto");
     CheckFactories.registerCheck<UseNullptrCheck>("modernize-use-nullptr");
+    CheckFactories.registerCheck<UseUsingCheck>("modernize-use-using");
   }
 
   ClangTidyOptions getModuleOptions() override {

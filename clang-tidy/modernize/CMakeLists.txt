@@ -8,6 +8,7 @@ add_clang_library(clangTidyModernizeModule
   ReplaceAutoPtrCheck.cpp
   UseAutoCheck.cpp
   UseNullptrCheck.cpp
+  UseUsingCheck.cpp
 
   LINK_LIBS
   clangAST
