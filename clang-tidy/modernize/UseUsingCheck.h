@@ -14,6 +14,7 @@
 
 namespace clang {
 namespace tidy {
+namespace modernize {
 
 class UseUsingCheck : public ClangTidyCheck {
 public:
@@ -23,6 +24,7 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 };
 
+} // namespace modernize
 } // namespace tidy
 } // namespace clang
 

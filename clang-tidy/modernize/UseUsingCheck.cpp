@@ -16,6 +16,7 @@ using namespace clang::ast_matchers;
 
 namespace clang {
 namespace tidy {
+namespace modernize {
 
 void UseUsingCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(typedefDecl().bind("typedef"), this);
@@ -63,6 +64,7 @@ void UseUsingCheck::check(const MatchFinder::MatchResult &Result) {
   Diag << FixItHint::CreateRemoval(SpaceNameRange);
 }
 
+} // namespace modernize
 } // namespace tidy
 } // namespace clang
 
