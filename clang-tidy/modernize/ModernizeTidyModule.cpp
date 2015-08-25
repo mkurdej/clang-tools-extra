@@ -14,6 +14,7 @@
 #include "PassByValueCheck.h"
 #include "UseAutoCheck.h"
 #include "UseNullptrCheck.h"
+#include "UseUsingCheck.h"
 
 using namespace clang::ast_matchers;
 
@@ -28,6 +29,7 @@ public:
     CheckFactories.registerCheck<PassByValueCheck>("modernize-pass-by-value");
     CheckFactories.registerCheck<UseAutoCheck>("modernize-use-auto");
     CheckFactories.registerCheck<UseNullptrCheck>("modernize-use-nullptr");
+    CheckFactories.registerCheck<UseUsingCheck>("modernize-use-using");
   }
 
   ClangTidyOptions getModuleOptions() override {

@@ -7,6 +7,7 @@ add_clang_library(clangTidyModernizeModule
   PassByValueCheck.cpp
   UseAutoCheck.cpp
   UseNullptrCheck.cpp
+  UseUsingCheck.cpp
 
   LINK_LIBS
   clangAST
