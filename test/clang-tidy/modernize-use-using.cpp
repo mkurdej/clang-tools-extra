@@ -1,5 +1,4 @@
-// RUN: %python %S/check_clang_tidy.py %s modernize-use-using %t \
-// RUN:   -- -std=c++11
+// RUN: %python %S/check_clang_tidy.py %s modernize-use-using %t
 
 class Class {};
 
