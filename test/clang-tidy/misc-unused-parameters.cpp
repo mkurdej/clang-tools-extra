@@ -2,6 +2,7 @@
 // RUN: echo "static void staticFunctionHeader(int  /*i*/) {}" > %T/header-fixed.h
 // RUN: %python %S/check_clang_tidy.py %s misc-unused-parameters %t -header-filter='.*' -- -fno-delayed-template-parsing
 // RUN: diff %T/header.h %T/header-fixed.h
+// REQUIRES: shell
 
 #include "header.h"
 // CHECK-MESSAGES: header.h:1:38: warning
