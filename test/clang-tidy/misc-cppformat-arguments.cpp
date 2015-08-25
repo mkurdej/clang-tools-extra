@@ -1,14 +1,19 @@
-// RUN: %python %S/check_clang_tidy.py %s misc-cppformat-arguments %t
+// RUN: %python %S/check_clang_tidy.py %s misc-cppformat-arguments %t -- \
+// RUN:   -std=c++11 -I %S/Inputs/misc-cppformat-arguments
 
-// FIXME: Add something that triggers the check here.
-void f();
-// CHECK-MESSAGES: :[[@LINE-1]]:6: warning: function 'f' is insufficiently awesome [misc-cppformat-arguments]
+#include "format.h"
 
-// FIXME: Verify the applied fix.
-//   * Make the CHECK patterns specific enough and try to make verified lines
-//     unique to avoid incorrect matches.
-//   * Use {{}} for regular expressions.
-// CHECK-FIXES: {{^}}void awesome_f();{{$}}
+// CHECK-FIXES-NOT: for ({{.*[^:]:[^:].*}})
 
-// FIXME: Add something that doesn't trigger the check here.
-void awesome_f2();
+void f() {
+  fmt::format("no arguments");
+  fmt::format("one empty argument {}", 0);
+  fmt::format("one numbered argument {0}", 0);
+  fmt::format("many {} empty {} arguments {} {}", 0, "1", 2, "3");
+  fmt::format("many {0} positional {3} arguments {2} {1} {0}", 0, "1", 2, "3");
+  // CHECK-NOT: warning:
+
+  // FIXME
+  // CHECK-MESSAGES: :[[@LINE-1]]:6: warning: function 'f' is insufficiently awesome [misc-cppformat-arguments]
+  // CHECK-FIXES: {{^}}void awesome_f();{{$}}
+}

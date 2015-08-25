@@ -17,20 +17,27 @@ namespace clang {
 namespace tidy {
 
 void CppformatArgumentsCheck::registerMatchers(MatchFinder *Finder) {
-  // FIXME: Add matchers.
-  Finder->addMatcher(functionDecl().bind("x"), this);
+  Finder->addMatcher(
+      callExpr(callee(expr(ignoringParenImpCasts(
+                   declRefExpr(to(functionDecl(hasName("::fmt::format"))))
+                       .bind("declref")))))
+          .bind("call"),
+      this);
 }
 
 void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
-  // FIXME: Add callback implementation.
-  const auto *MatchedDecl = Result.Nodes.getNodeAs<FunctionDecl>("x");
-  if (MatchedDecl->getName().startswith("awesome_"))
+  const auto *Call = Result.Nodes.getNodeAs<CallExpr>("call");
+  if (!Call)
     return;
-  diag(MatchedDecl->getLocation(), "function '%0' is insufficiently awesome")
-      << MatchedDecl->getName()
-      << FixItHint::CreateInsertion(MatchedDecl->getLocation(), "awesome_");
+
+  SourceLocation BeginLoc = Call->getLocStart();
+  if (BeginLoc.isInvalid())
+    return;
+
+  diag(BeginLoc, "function '%0' is insufficiently awesome")
+      << Call->getName()
+      << FixItHint::CreateInsertion(BeginLoc, "awesome_");
 }
 
 } // namespace tidy
 } // namespace clang
-
