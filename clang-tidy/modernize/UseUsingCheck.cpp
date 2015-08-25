@@ -44,11 +44,11 @@ void UseUsingCheck::check(const MatchFinder::MatchResult &Result) {
   const SourceManager &SM = *Result.SourceManager;
 
   const auto *Typedef = Result.Nodes.getNodeAs<TypedefDecl>("typedef");
-  if (Typedef->getName().startswith("awesome_"))
-    return;
 
-  const StringRef Message = "use 'using' instead of 'typedef'";
+  static const StringRef Message = "use 'using' instead of 'typedef'";
   auto BeginLoc = Typedef->getSourceRange().getBegin();
+  if (BeginLoc.isInvalid())
+      return;
   DiagnosticBuilder Diag = diag(BeginLoc, Message);
 
   const auto TypedefRange = SourceRange(BeginLoc, BeginLoc.getLocWithOffset(std::strlen("typedef")));
