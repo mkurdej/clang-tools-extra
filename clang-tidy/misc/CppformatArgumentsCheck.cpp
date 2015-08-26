@@ -74,8 +74,8 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
   const StringRef FormatString = FormatStringArg->getBytes();
 
   // Check format string.
-  size_t NumArgsInString;
-  SmallVector<size_t, 3> ArgsInString;
+  // We use the last index to indicate that the argument index was unspecified.
+  SmallVector<bool, 0> UsedArgs(NumUsefulArgs + 1, /*Value=*/false);
 
   bool HasOpeningBrace = false;
   size_t LastOpeningBracePos = StringRef::npos;
@@ -136,9 +136,17 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
                 diag(ArgLoc, "incorrect format string: argument is out of "
                              "bounds (should be < %0)")
                     << NumUsefulArgs;
-                }
+              } else {
+                UsedArgs[ArgNum] = true;
+              }
             }
+          } else {
+            // Unspecified index was used.
+            UsedArgs[NumUsefulArgs] = true;
           }
+        } else {
+          // Unspecified index was used.
+          UsedArgs[NumUsefulArgs] = true;
         }
       }
 
@@ -146,6 +154,23 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
       LastOpeningBracePos = StringRef::npos;
     } else {
       continue;
+    }
+  }
+
+  // From doc (http://cppformat.github.io/latest/syntax.html#format-string-syntax):
+  // If the numerical arg_indexes in a format string are 0, 1, 2, ... in sequence,
+  // they can all be omitted (not just some) and the numbers 0, 1, 2, ... will
+  // be automatically inserted in that order.
+  if (!UsedArgs[NumUsefulArgs]) {
+    // All argument indices have been specified.
+    for (size_t ArgNum = 0u; ArgNum < NumUsefulArgs; ++ArgNum) {
+      if (!UsedArgs[ArgNum]) {
+        const Expr *Arg =
+            Call->getArg(ArgNum + 1 + IgnoreNumArgs)->IgnoreImpCasts();
+        assert(Arg);
+        SourceLocation ArgLoc = Arg->getLocStart();
+        diag(ArgLoc, "incorrect format string: unused argument");
+      }
     }
   }
 
