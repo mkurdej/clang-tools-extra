@@ -117,7 +117,7 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
           size_t ClosingPos = ArgFormat.size();
           // Find colon.
           const size_t ColonPos = ArgFormat.find(':');
-          if ((ColonPos != StringRef::npos) && (ColonPos > 0))
+          if (ColonPos != StringRef::npos)
             ClosingPos = ColonPos;
 
           if (ClosingPos > 0) {
