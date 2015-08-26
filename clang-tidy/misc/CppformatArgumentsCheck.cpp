@@ -60,9 +60,11 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
   // 0 or 1 for print (can be void/FILE*/ostream&)
   // 1 for print_colored
   unsigned NumArgs = Call->getNumArgs();
-  
+
   if (NumArgs < IgnoreNumArgs)
     return;
+
+  const unsigned NumUsefulArgs = NumArgs - 1 - IgnoreNumArgs;
 
   const Expr *Arg = Call->getArg(IgnoreNumArgs)->IgnoreImpCasts();
   const StringLiteral *FormatStringArg = dyn_cast<StringLiteral>(Arg);
@@ -75,8 +77,8 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
   size_t NumArgsInString;
   SmallVector<size_t, 3> ArgsInString;
 
-  size_t LastOpeningBracePos = -1;
   bool HasOpeningBrace = false;
+  size_t LastOpeningBracePos = StringRef::npos;
   for (size_t Pos = 0; Pos < FormatString.size(); ++Pos) {
     if (FormatString[Pos] == '{') {
       if ((FormatString.size() > (Pos + 1)) && (FormatString[Pos + 1] == '{')) {
@@ -106,16 +108,48 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
             FormatStringArg->getLocationOfByte(Pos, *SM, LangOpts, Target);
         diag(BraceLoc, "incorrect format string: unmatched closing brace")
             << FixItHint::CreateInsertion(BraceLoc, "{");
+      } else {
+        assert(LastOpeningBracePos != StringRef::npos);
+        assert(LastOpeningBracePos + 1 <= Pos);
+        StringRef ArgFormat = FormatString.slice(LastOpeningBracePos + 1, Pos);
+
+        if (ArgFormat.size() > 0) {
+          size_t ClosingPos = ArgFormat.size();
+          // Find colon.
+          const size_t ColonPos = ArgFormat.find(':');
+          if ((ColonPos != StringRef::npos) && (ColonPos > 0))
+            ClosingPos = ColonPos;
+
+          if (ClosingPos > 0) {
+            // Check the argument format.
+            size_t ArgNum;
+            SourceLocation ArgLoc = FormatStringArg->getLocationOfByte(
+                LastOpeningBracePos + 1, *SM, LangOpts, Target);
+            if (ArgFormat.substr(0, ClosingPos)
+                    .getAsInteger(/*Radix=*/10, ArgNum)) {
+              // Wrong format, cannot parse.
+              diag(ArgLoc,
+                   "incorrect format string: cannot parse argument number");
+            } else {
+              if (ArgNum >= NumUsefulArgs) {
+                // Out of bounds argument index.
+                diag(ArgLoc, "incorrect format string: argument is out of "
+                             "bounds (should be < %0)")
+                    << NumUsefulArgs;
+                }
+            }
+          }
+        }
       }
 
       HasOpeningBrace = false;
+      LastOpeningBracePos = StringRef::npos;
     } else {
       continue;
     }
-
-    // Check if closed.
   }
 
+  // Check if closed.
   if (HasOpeningBrace) {
     SourceLocation BraceLoc = FormatStringArg->getLocationOfByte(
         LastOpeningBracePos, *SM, LangOpts, Target);

@@ -25,12 +25,12 @@ void test_format() {
   fmt::format(format_string);
   // CHECK-NOT: warning:
 
-  fmt::format("unmatched single brace { not at end", 0);
-  // CHECK-MESSAGES: :[[@LINE-1]]:39: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
-  // CHECK-FIXES: fmt::format("unmatched single brace {} not at end", 0);{{$}}
-  fmt::format("unmatched single brace at end {", 0);
-  // CHECK-MESSAGES: :[[@LINE-1]]:46: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
-  // CHECK-FIXES: fmt::format("unmatched single brace at end {}", 0);{{$}}
+  fmt::format("unmatched opening brace { not at end", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:40: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched opening brace {} not at end", 0);{{$}}
+  fmt::format("unmatched opening brace at end {", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:47: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched opening brace at end {}", 0);{{$}}
   fmt::format("unmatched one of many braces { {}", 0, 1);
   // CHECK-MESSAGES: :[[@LINE-1]]:45: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
   // CHECK-FIXES: fmt::format("unmatched one of many braces {} {}", 0, 1);{{$}}
@@ -40,8 +40,15 @@ void test_format() {
   // CHECK-MESSAGES: :[[@LINE-3]]:42: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
   // CHECK-FIXES: fmt::format("unmatched many braces {} {} {}", 0, 1, 2);{{$}}
 
+  fmt::format("unmatched closing brace } not at end", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:40: warning: incorrect format string: unmatched closing brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched closing brace {} not at end", 0);{{$}}
+  fmt::format("unmatched closing brace at end }", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:47: warning: incorrect format string: unmatched closing brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched closing brace at end {}", 0);{{$}}
+
   fmt::format("index out of bounds {1}", 0);
-  // CHECK-MESSAGES: :[[@LINE-1]]:36: warning: incorrect format string: argument '{1}' is out of bounds [misc-cppformat-arguments]
+  // CHECK-MESSAGES: :[[@LINE-1]]:36: warning: incorrect format string: argument is out of bounds (should be < 1) [misc-cppformat-arguments]
   fmt::format("unused arguments {1} {2} {1}", 0, 1, 2);
   // CHECK-MESSAGES: :[[@LINE-1]]:47: warning: incorrect format string: unused argument [misc-cppformat-arguments]
   fmt::format("partially specified positions {1} {} {0}", 0, 1, 2);
