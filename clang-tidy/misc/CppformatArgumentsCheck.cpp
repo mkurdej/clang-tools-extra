@@ -190,31 +190,6 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
     diag(BraceLoc, "incorrect format string: unmatched opening brace")
         << FixItHint::CreateInsertion(BraceLoc.getLocWithOffset(1), "}");
   }
-
-  //size_t Pos = FormatString.find('{', /*From=*/0u);
-  //while (Pos != StringRef::npos) {
-  //  size_t EndPos = FormatString.find('}', /*From=*/Pos + 1u);
-  //  size_t OldPos = Pos;
-  //  // Pos = FormatString.find('{', /*From=*/Pos + 1u);
-
-  //  // Check if the '{' was escaped.
-  //  if (isEscaped(FormatString, OldPos))
-  //    continue;
-
-  //  if ((EndPos == StringRef::npos) ||
-  //      ((Pos != StringRef::npos) && (Pos < EndPos))) {
-  //    SourceLocation OpeningBraceLoc =
-  //        FormatStringArg->getLocationOfByte(OldPos, *SM, LangOpts, Target);
-  //    diag(OpeningBraceLoc, "incorrect format string: unmatched opening brace")
-  //        << FixItHint::CreateInsertion(OpeningBraceLoc.getLocWithOffset(1),
-  //                                      "}");
-  //  }
-  //}
-
-  //diag(BeginLoc, "function has '%0' arguments and is insufficiently awesome: "
-  //               "fmt string '%1'")
-  //    << NumArgs << FormatString
-  //    << FixItHint::CreateInsertion(BeginLoc, "awesome_");
 }
 
 } // namespace misc
