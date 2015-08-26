@@ -65,6 +65,12 @@ void test_format() {
 
 void test_format_using() {
   using fmt::format;
+
+  format("unmatched opening brace { not at end", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:35: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-MESSAGES: :[[@LINE-2]]:50: warning: incorrect format string: unused argument [misc-cppformat-arguments]
+  // CHECK-FIXES: format("unmatched opening brace {} not at end", 0);{{$}}
+
   format("no arguments");
   // CHECK-NOT: warning:
 }
