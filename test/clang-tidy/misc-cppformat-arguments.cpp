@@ -60,7 +60,7 @@ void test_format() {
   fmt::format("unused arguments {1} {2} {1}", 0, 1, 2);
   // CHECK-MESSAGES: :[[@LINE-1]]:47: warning: incorrect format string: unused argument [misc-cppformat-arguments]
   fmt::format("partially specified positions {1} {} {0}", 0, 1, 2);
-  // CHECK-MESSAGES: :[[@LINE-1]]:50: warning: incorrect format string: all or none of the argument indices must be specified [misc-cppformat-arguments]
+  // CHECK-MESSAGES: :[[@LINE-1]]:15: warning: incorrect format string: all or none of the argument indices must be specified [misc-cppformat-arguments]
 }
 
 void test_format_using() {

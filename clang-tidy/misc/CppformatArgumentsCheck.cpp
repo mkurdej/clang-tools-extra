@@ -74,8 +74,8 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
   const StringRef FormatString = FormatStringArg->getBytes();
 
   // Check format string.
-  // We use the last index to indicate that the argument index was unspecified.
-  SmallVector<bool, 0> UsedArgs(NumUsefulArgs + 1, /*Value=*/false);
+  bool UnspecifiedArgIndices = false;
+  SmallVector<bool, 0> UsedArgs(NumUsefulArgs, /*Value=*/false);
 
   bool HasOpeningBrace = false;
   size_t LastOpeningBracePos = StringRef::npos;
@@ -142,11 +142,11 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
             }
           } else {
             // Unspecified index was used.
-            UsedArgs[NumUsefulArgs] = true;
+            UnspecifiedArgIndices = true;
           }
         } else {
           // Unspecified index was used.
-          UsedArgs[NumUsefulArgs] = true;
+          UnspecifiedArgIndices = true;
         }
       }
 
@@ -161,8 +161,17 @@ void CppformatArgumentsCheck::check(const MatchFinder::MatchResult &Result) {
   // If the numerical arg_indexes in a format string are 0, 1, 2, ... in sequence,
   // they can all be omitted (not just some) and the numbers 0, 1, 2, ... will
   // be automatically inserted in that order.
-  if (!UsedArgs[NumUsefulArgs]) {
-    // All argument indices have been specified.
+  if (UnspecifiedArgIndices) {
+    // Some argument indices have been unspecified...
+    if (std::any_of(UsedArgs.begin(), UsedArgs.end(),
+                    [](bool v) { return v; })) {
+      // ...and some have been specified.
+      SourceLocation ArgLoc = FormatStringArg->getLocStart();
+      diag(ArgLoc, "incorrect format string: all or none of the argument "
+                   "indices must be specified");
+    }
+  } else {
+    // No argument index has been left unspecified.
     for (size_t ArgNum = 0u; ArgNum < NumUsefulArgs; ++ArgNum) {
       if (!UsedArgs[ArgNum]) {
         const Expr *Arg =
