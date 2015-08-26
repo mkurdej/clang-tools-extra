@@ -16,27 +16,29 @@ void test_format() {
   fmt::format(L"no arguments");
   // CHECK-NOT: warning:
 
-  {
-    const char *format_string = "format_string";
-    fmt::format(format_string);
-  }
-  //{
-  //  std::string format_string = "format_string";
-  //  fmt::format(format_string);
-  //}
+  fmt::format("escaped opening brace {{");
+  fmt::format("escaped closing brace }}");
+  fmt::format("escaped braces {{ {} }}", 0);
   // CHECK-NOT: warning:
 
-  fmt::format("unclosed single brace {", 0);
-  // CHECK-MESSAGES: :[[@LINE-1]]:38: warning: incorrect format string: unclosed curly brace [misc-cppformat-arguments]
-  // CHECK-FIXES: fmt::format("unclosed single brace {}", 0);{{$}}
-  fmt::format("unclosed one of many braces { {}", 0, 1);
-  // CHECK-MESSAGES: :[[@LINE-1]]:44: warning: incorrect format string: unclosed curly brace [misc-cppformat-arguments]
-  // CHECK-FIXES: fmt::format("unclosed one of many braces {} {}", 0, 1);{{$}}
-  fmt::format("unclosed many braces { { {", 0, 1, 2);
-  // CHECK-MESSAGES: :[[@LINE-1]]:37: warning: incorrect format string: unclosed curly brace [misc-cppformat-arguments]
-  // CHECK-MESSAGES: :[[@LINE-2]]:39: warning: incorrect format string: unclosed curly brace [misc-cppformat-arguments]
-  // CHECK-MESSAGES: :[[@LINE-3]]:41: warning: incorrect format string: unclosed curly brace [misc-cppformat-arguments]
-  // CHECK-FIXES: fmt::format("unclosed many braces {} {} {}", 0, 1, 2);{{$}}
+  const char *format_string = "format_string";
+  fmt::format(format_string);
+  // CHECK-NOT: warning:
+
+  fmt::format("unmatched single brace { not at end", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:39: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched single brace {} not at end", 0);{{$}}
+  fmt::format("unmatched single brace at end {", 0);
+  // CHECK-MESSAGES: :[[@LINE-1]]:46: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched single brace at end {}", 0);{{$}}
+  fmt::format("unmatched one of many braces { {}", 0, 1);
+  // CHECK-MESSAGES: :[[@LINE-1]]:45: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched one of many braces {} {}", 0, 1);{{$}}
+  fmt::format("unmatched many braces { { {", 0, 1, 2);
+  // CHECK-MESSAGES: :[[@LINE-1]]:38: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-MESSAGES: :[[@LINE-2]]:40: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-MESSAGES: :[[@LINE-3]]:42: warning: incorrect format string: unmatched opening brace [misc-cppformat-arguments]
+  // CHECK-FIXES: fmt::format("unmatched many braces {} {} {}", 0, 1, 2);{{$}}
 
   fmt::format("index out of bounds {1}", 0);
   // CHECK-MESSAGES: :[[@LINE-1]]:36: warning: incorrect format string: argument '{1}' is out of bounds [misc-cppformat-arguments]
