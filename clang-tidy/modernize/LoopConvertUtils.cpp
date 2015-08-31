@@ -363,13 +363,19 @@ static bool isAliasDecl(const Decl *TheDecl, const VarDecl *IndexVar) {
       return isDereferenceOfOpCall(OpCall, IndexVar);
     if (OpCall->getOperator() == OO_Subscript) {
       assert(OpCall->getNumArgs() == 2);
-      return true;
+      return isIndexInSubscriptExpr(OpCall->getArg(1), IndexVar);
     }
     break;
   }
 
-  case Stmt::CXXMemberCallExprClass:
-    return true;
+  case Stmt::CXXMemberCallExprClass: {
+    const auto *MemCall = cast<CXXMemberCallExpr>(Init);
+    if (MemCall->getMethodDecl()->getName() == "at") {
+      assert(MemCall->getNumArgs() == 1);
+      return isIndexInSubscriptExpr(MemCall->getArg(0), IndexVar);
+    }
+    return false;
+  }
 
   default:
     break;
