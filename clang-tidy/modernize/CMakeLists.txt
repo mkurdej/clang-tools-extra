@@ -6,8 +6,10 @@ add_clang_library(clangTidyModernizeModule
   ModernizeTidyModule.cpp
   PassByValueCheck.cpp
   ReplaceAutoPtrCheck.cpp
+  ShrinkToFitCheck.cpp
   UseAutoCheck.cpp
   UseNullptrCheck.cpp
+  UseOverrideCheck.cpp
   UseUsingCheck.cpp
 
   LINK_LIBS
