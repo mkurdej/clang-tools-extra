@@ -18,7 +18,11 @@ namespace tidy {
 namespace misc {
 
 void CppformatArgumentsCheck::registerMatchers(MatchFinder *Finder) {
-  // FIXME: same for print, print_colored
+  // Only register the matchers for C++.
+  if (!getLangOpts().CPlusPlus)
+    return;
+
+  // FIXME: same for print, print_colored, or user-provided functions
   Finder->addMatcher(
       callExpr(callee(expr(ignoringParenImpCasts(
                    declRefExpr(to(functionDecl(hasName("::fmt::format"))))

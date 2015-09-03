@@ -19,6 +19,10 @@ namespace tidy {
 namespace modernize {
 
 void UseUsingCheck::registerMatchers(MatchFinder *Finder) {
+  // Only register the matchers for C++.
+  if (!getLangOpts().CPlusPlus)
+    return;
+
   Finder->addMatcher(typedefDecl().bind("typedef"), this);
 }
 
