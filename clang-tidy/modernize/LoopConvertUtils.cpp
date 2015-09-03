@@ -370,7 +370,10 @@ static bool isAliasDecl(const Decl *TheDecl, const VarDecl *IndexVar) {
 
   case Stmt::CXXMemberCallExprClass: {
     const auto *MemCall = cast<CXXMemberCallExpr>(Init);
-    if (MemCall->getMethodDecl()->getName() == "at") {
+    // This check is needed because getMethodDecl can return nullptr if the
+    // callee is a member function pointer.
+    if (MemCall->getMethodDecl() &&
+        MemCall->getMethodDecl()->getName() == "at") {
       assert(MemCall->getNumArgs() == 1);
       return isIndexInSubscriptExpr(MemCall->getArg(0), IndexVar);
     }
@@ -425,12 +428,8 @@ ForLoopIndexUseVisitor::ForLoopIndexUseVisitor(ASTContext *Context,
       ConfidenceLevel(Confidence::CL_Safe), NextStmtParent(nullptr),
       CurrStmtParent(nullptr), ReplaceWithAliasUse(false),
       AliasFromForInit(false) {
-  if (ContainerExpr) {
+  if (ContainerExpr)
     addComponent(ContainerExpr);
-    FoldingSetNodeID ID;
-    const Expr *E = ContainerExpr->IgnoreParenImpCasts();
-    E->Profile(ID, *Context, true);
-  }
 }
 
 bool ForLoopIndexUseVisitor::findAndVerifyUsages(const Stmt *Body) {
@@ -521,7 +520,13 @@ bool ForLoopIndexUseVisitor::TraverseMemberExpr(MemberExpr *Member) {
     }
   }
 
-  if (Member->isArrow() && Obj && exprReferencesVariable(IndexVar, Obj)) {
+  if (Obj && exprReferencesVariable(IndexVar, Obj)) {
+    // Member calls on the iterator with '.' are not allowed.
+    if (!Member->isArrow()) {
+      OnlyUsedAsIndex = false;
+      return true;
+    }
+
     if (ExprType.isNull())
       ExprType = Obj->getType();
 
@@ -539,7 +544,7 @@ bool ForLoopIndexUseVisitor::TraverseMemberExpr(MemberExpr *Member) {
       return true;
     }
   }
-  return TraverseStmt(Member->getBase());
+  return VisitorBase::TraverseMemberExpr(Member);
 }
 
 /// \brief If a member function call is the at() accessor on the container with
@@ -576,7 +581,7 @@ bool ForLoopIndexUseVisitor::TraverseCXXMemberCallExpr(
 }
 
 /// \brief If an overloaded operator call is a dereference of IndexVar or
-/// a subscript of a the container with IndexVar as the single argument,
+/// a subscript of the container with IndexVar as the single argument,
 /// include it as a valid usage and prune the traversal.
 ///
 /// For example, given
@@ -682,9 +687,6 @@ bool ForLoopIndexUseVisitor::TraverseArraySubscriptExpr(ArraySubscriptExpr *E) {
 ///     i.insert(0);
 ///   for (vector<int>::iterator i = container.begin(), e = container.end();
 ///        i != e; ++i)
-///     i.insert(0);
-///   for (vector<int>::iterator i = container.begin(), e = container.end();
-///        i != e; ++i)
 ///     if (i + 1 != e)
 ///       printf("%d", *i);
 /// \endcode
@@ -700,7 +702,9 @@ bool ForLoopIndexUseVisitor::TraverseArraySubscriptExpr(ArraySubscriptExpr *E) {
 /// \endcode
 bool ForLoopIndexUseVisitor::VisitDeclRefExpr(DeclRefExpr *E) {
   const ValueDecl *TheDecl = E->getDecl();
-  if (areSameVariable(IndexVar, TheDecl) || areSameVariable(EndVar, TheDecl))
+  if (areSameVariable(IndexVar, TheDecl) ||
+      exprReferencesVariable(IndexVar, E) || areSameVariable(EndVar, TheDecl) ||
+      exprReferencesVariable(EndVar, E))
     OnlyUsedAsIndex = false;
   if (containsExpr(Context, &DependentExprs, E))
     ConfidenceLevel.lowerTo(Confidence::CL_Risky);
