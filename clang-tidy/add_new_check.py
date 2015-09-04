@@ -36,7 +36,7 @@ def adapt_cmake(module_path, check_name_camel):
     for line in lines:
       if not file_added and (line.endswith('.cpp') or cpp_found):
         cpp_found = True
-        if line.strip() > cpp_file or (not line.endswith('.cpp')):
+        if line.strip() > cpp_file:
           f.write('  ' + cpp_file + '\n')
           file_added = True
       f.write(line + '\n')
