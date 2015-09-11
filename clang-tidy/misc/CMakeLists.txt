@@ -13,6 +13,7 @@ add_clang_library(clangTidyMiscModule
   MiscTidyModule.cpp
   MoveConstructorInitCheck.cpp
   NoexceptMoveConstructorCheck.cpp
+  SizeofContainerCheck.cpp
   StaticAssertCheck.cpp
   SwappedArgumentsCheck.cpp
   UndelegatedConstructor.cpp
