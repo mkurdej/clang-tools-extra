@@ -1,4 +1,4 @@
-// RUN: %python %S/check_clang_tidy.py %s misc-sizeof-container %t
+// RUN: %python %S/check_clang_tidy.py %s misc-sizeof-container %t -- -std=c++11 -target x86_64-unknown-unknown
 
 namespace std {
 
@@ -16,6 +16,12 @@ typedef basic_string<char> string;
 
 template <typename T>
 struct vector {
+  size_t size() const;
+};
+
+// std::bitset<> is not a container. sizeof() is reasonable for it.
+template <size_t N>
+struct bitset {
   size_t size() const;
 };
 
@@ -78,9 +84,11 @@ void f() {
 
   std::fake_container1 f1;
   std::fake_container2 f2;
+  std::bitset<7> bs;
 
   a = sizeof(f1);
   a = sizeof(f2);
+  a = sizeof(bs);
 
 
   std::string arr[3];
