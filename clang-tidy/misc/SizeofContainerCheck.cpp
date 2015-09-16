@@ -16,27 +16,12 @@ using namespace clang::ast_matchers;
 namespace clang {
 namespace tidy {
 
-namespace {
-
-bool needsParens(const Expr *E) {
-  E = E->IgnoreImpCasts();
-  if (isa<BinaryOperator>(E) || isa<ConditionalOperator>(E))
-    return true;
-  if (const auto *Op = dyn_cast<CXXOperatorCallExpr>(E)) {
-    return Op->getNumArgs() == 2 && Op->getOperator() != OO_Call &&
-           Op->getOperator() != OO_Subscript;
-  }
-  return false;
-}
-
-} // anonymous namespace
-
 void SizeofContainerCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(
       expr(unless(isInTemplateInstantiation()),
            expr(sizeOfExpr(has(expr(hasType(hasCanonicalType(hasDeclaration(
                     recordDecl(matchesName("^(::std::|::string)"),
-                               unless(hasName("::std::bitset")),
+                               unless(matchesName("^::std::(bitset|array)$")),
                                hasMethod(methodDecl(hasName("size"), isPublic(),
                                                     isConst()))))))))))
                .bind("sizeof"),
@@ -52,31 +37,9 @@ void SizeofContainerCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *SizeOf =
       Result.Nodes.getNodeAs<UnaryExprOrTypeTraitExpr>("sizeof");
 
-  SourceLocation SizeOfLoc = SizeOf->getLocStart();
-  auto Diag = diag(SizeOfLoc, "sizeof() doesn't return the size of the "
-                              "container; did you mean .size()?");
-
-  // Don't generate fixes for macros.
-  if (SizeOfLoc.isMacroID())
-    return;
-
-  SourceLocation RParenLoc = SizeOf->getRParenLoc();
-
-  // sizeof argument is wrapped in a single ParenExpr.
-  const auto *Arg = cast<ParenExpr>(SizeOf->getArgumentExpr());
-
-  if (needsParens(Arg->getSubExpr())) {
-    Diag << FixItHint::CreateRemoval(
-                CharSourceRange::getTokenRange(SizeOfLoc, SizeOfLoc))
-         << FixItHint::CreateInsertion(RParenLoc.getLocWithOffset(1),
-                                       ".size()");
-  } else {
-    Diag << FixItHint::CreateRemoval(
-                CharSourceRange::getTokenRange(SizeOfLoc, Arg->getLParen()))
-         << FixItHint::CreateReplacement(
-                CharSourceRange::getTokenRange(RParenLoc, RParenLoc),
-                ".size()");
-  }
+  auto Diag =
+      diag(SizeOf->getLocStart(), "sizeof() doesn't return the size of the "
+                                  "container; did you mean .size()?");
 }
 
 } // namespace tidy
