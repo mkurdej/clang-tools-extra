@@ -20,7 +20,9 @@
 #include "MacroParenthesesCheck.h"
 #include "MacroRepeatedSideEffectsCheck.h"
 #include "MoveConstructorInitCheck.h"
+#include "NewDeleteOverloadsCheck.h"
 #include "NoexceptMoveConstructorCheck.h"
+#include "NonCopyableObjects.h"
 #include "SizeofContainerCheck.h"
 #include "StaticAssertCheck.h"
 #include "SwappedArgumentsCheck.h"
@@ -56,10 +58,13 @@ public:
         "misc-macro-repeated-side-effects");
     CheckFactories.registerCheck<MoveConstructorInitCheck>(
         "misc-move-constructor-init");
+    CheckFactories.registerCheck<NewDeleteOverloadsCheck>(
+        "misc-new-delete-overloads");
     CheckFactories.registerCheck<NoexceptMoveConstructorCheck>(
         "misc-noexcept-move-constructor");
-    CheckFactories.registerCheck<SizeofContainerCheck>(
-        "misc-sizeof-container");
+    CheckFactories.registerCheck<NonCopyableObjectsCheck>(
+        "misc-non-copyable-objects");
+    CheckFactories.registerCheck<SizeofContainerCheck>("misc-sizeof-container");
     CheckFactories.registerCheck<StaticAssertCheck>(
         "misc-static-assert");
     CheckFactories.registerCheck<SwappedArgumentsCheck>(

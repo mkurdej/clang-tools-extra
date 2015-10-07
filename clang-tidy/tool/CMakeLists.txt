@@ -10,6 +10,8 @@ target_link_libraries(clang-tidy
   clangASTMatchers
   clangBasic
   clangTidy
+  clangTidyCERTModule
+  clangTidyCppCoreGuidelinesModule
   clangTidyGoogleModule
   clangTidyLLVMModule
   clangTidyMiscModule

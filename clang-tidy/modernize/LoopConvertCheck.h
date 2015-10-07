@@ -34,6 +34,8 @@ private:
     std::string ContainerString;
   };
 
+  void getAliasRange(SourceManager &SM, SourceRange &DeclRange);
+
   void doConversion(ASTContext *Context, const VarDecl *IndexVar,
                     const VarDecl *MaybeContainer, const UsageResult &Usages,
                     const DeclStmt *AliasDecl, bool AliasUseRequired,
@@ -64,7 +66,8 @@ private:
                      const ForStmt *Loop, LoopFixerKind FixerKind);
 
   std::unique_ptr<TUTrackingInfo> TUInfo;
-  Confidence::Level MinConfidence;
+  const Confidence::Level MinConfidence;
+  const VariableNamer::NamingStyle NamingStyle;
 };
 
 } // namespace modernize

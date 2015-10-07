@@ -112,8 +112,9 @@ StatementMatcher makeArrayLoopMatcher() {
 ///   - If the end iterator variable 'g' is defined, it is the same as 'f'.
 StatementMatcher makeIteratorLoopMatcher() {
   StatementMatcher BeginCallMatcher =
-      cxxMemberCallExpr(argumentCountIs(0),
-                        callee(cxxMethodDecl(hasName("begin"))))
+      cxxMemberCallExpr(
+          argumentCountIs(0),
+          callee(cxxMethodDecl(anyOf(hasName("begin"), hasName("cbegin")))))
           .bind(BeginCallName);
 
   DeclarationMatcher InitDeclMatcher =
@@ -127,7 +128,8 @@ StatementMatcher makeIteratorLoopMatcher() {
       varDecl(hasInitializer(anything())).bind(EndVarName);
 
   StatementMatcher EndCallMatcher = cxxMemberCallExpr(
-      argumentCountIs(0), callee(cxxMethodDecl(hasName("end"))));
+      argumentCountIs(0),
+      callee(cxxMethodDecl(anyOf(hasName("end"), hasName("cend")))));
 
   StatementMatcher IteratorBoundMatcher =
       expr(anyOf(ignoringParenImpCasts(
@@ -296,7 +298,8 @@ static const Expr *getContainerFromBeginEndCall(const Expr *Init, bool IsBegin,
     return nullptr;
   StringRef Name = Member->getMemberDecl()->getName();
   StringRef TargetName = IsBegin ? "begin" : "end";
-  if (Name != TargetName)
+  StringRef ConstTargetName = IsBegin ? "cbegin" : "cend";
+  if (Name != TargetName && Name != ConstTargetName)
     return nullptr;
 
   const Expr *SourceExpr = Member->getBase();
@@ -394,9 +397,7 @@ static bool containerIsConst(const Expr *ContainerExpr, bool Dereference) {
     // If VDec is a reference to a container, Dereference is false,
     // but we still need to check the const-ness of the underlying container
     // type.
-    if (const auto &RT = CType->getAs<ReferenceType>()) {
-      CType = RT->getPointeeType();
-    }
+    CType = CType.getNonReferenceType();
     return CType.isConstQualified();
   }
   return false;
@@ -412,11 +413,21 @@ LoopConvertCheck::LoopConvertCheck(StringRef Name, ClangTidyContext *Context)
                         Options.get("MinConfidence", "reasonable"))
                         .Case("safe", Confidence::CL_Safe)
                         .Case("risky", Confidence::CL_Risky)
-                        .Default(Confidence::CL_Reasonable)) {}
+                        .Default(Confidence::CL_Reasonable)),
+      NamingStyle(StringSwitch<VariableNamer::NamingStyle>(
+                      Options.get("NamingStyle", "CamelCase"))
+                      .Case("camelBack", VariableNamer::NS_CamelBack)
+                      .Case("lower_case", VariableNamer::NS_LowerCase)
+                      .Case("UPPER_CASE", VariableNamer::NS_UpperCase)
+                      .Default(VariableNamer::NS_CamelCase)) {}
 
 void LoopConvertCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   SmallVector<std::string, 3> Confs{"risky", "reasonable", "safe"};
   Options.store(Opts, "MinConfidence", Confs[static_cast<int>(MinConfidence)]);
+
+  SmallVector<std::string, 4> Styles{"camelBack", "CamelCase", "lower_case",
+                                     "UPPER_CASE"};
+  Options.store(Opts, "NamingStyle", Styles[static_cast<int>(NamingStyle)]);
 }
 
 void LoopConvertCheck::registerMatchers(MatchFinder *Finder) {
@@ -431,6 +442,30 @@ void LoopConvertCheck::registerMatchers(MatchFinder *Finder) {
   Finder->addMatcher(makePseudoArrayLoopMatcher(), this);
 }
 
+/// \brief Given the range of a single declaration, such as:
+/// \code
+///   unsigned &ThisIsADeclarationThatCanSpanSeveralLinesOfCode =
+///       InitializationValues[I];
+///   next_instruction;
+/// \endcode
+/// Finds the range that has to be erased to remove this declaration without
+/// leaving empty lines, by extending the range until the beginning of the
+/// next instruction.
+///
+/// We need to delete a potential newline after the deleted alias, as
+/// clang-format will leave empty lines untouched. For all other formatting we
+/// rely on clang-format to fix it.
+void LoopConvertCheck::getAliasRange(SourceManager &SM, SourceRange &Range) {
+  bool Invalid = false;
+  const char *TextAfter =
+      SM.getCharacterData(Range.getEnd().getLocWithOffset(1), &Invalid);
+  if (Invalid)
+    return;
+  unsigned Offset = std::strspn(TextAfter, " \t\r\n");
+  Range =
+      SourceRange(Range.getBegin(), Range.getEnd().getLocWithOffset(Offset));
+}
+
 /// \brief Computes the changes needed to convert a given for loop, and
 /// applies them.
 void LoopConvertCheck::doConversion(
@@ -442,6 +477,7 @@ void LoopConvertCheck::doConversion(
   std::string VarName;
   bool VarNameFromAlias = (Usages.size() == 1) && AliasDecl;
   bool AliasVarIsRef = false;
+  bool CanCopy = true;
 
   if (VarNameFromAlias) {
     const auto *AliasVar = cast<VarDecl>(AliasDecl->getSingleDecl());
@@ -449,7 +485,7 @@ void LoopConvertCheck::doConversion(
     AliasVarIsRef = AliasVar->getType()->isReferenceType();
 
     // We keep along the entire DeclStmt to keep the correct range here.
-    const SourceRange &ReplaceRange = AliasDecl->getSourceRange();
+    SourceRange ReplaceRange = AliasDecl->getSourceRange();
 
     std::string ReplacementText;
     if (AliasUseRequired) {
@@ -459,6 +495,9 @@ void LoopConvertCheck::doConversion(
       // in a for loop's init clause. Need to put this ';' back while removing
       // the declaration of the alias variable. This is probably a bug.
       ReplacementText = ";";
+    } else {
+      // Avoid leaving empty lines or trailing whitespaces.
+      getAliasRange(Context->getSourceManager(), ReplaceRange);
     }
 
     Diag << FixItHint::CreateReplacement(
@@ -468,17 +507,37 @@ void LoopConvertCheck::doConversion(
   } else {
     VariableNamer Namer(&TUInfo->getGeneratedDecls(),
                         &TUInfo->getParentFinder().getStmtToParentStmtMap(),
-                        Loop, IndexVar, MaybeContainer, Context);
+                        Loop, IndexVar, MaybeContainer, Context, NamingStyle);
     VarName = Namer.createIndexName();
     // First, replace all usages of the array subscript expression with our new
     // variable.
     for (const auto &Usage : Usages) {
       std::string ReplaceText;
+      SourceRange Range = Usage.Range;
       if (Usage.Expression) {
         // If this is an access to a member through the arrow operator, after
         // the replacement it must be accessed through the '.' operator.
         ReplaceText = Usage.Kind == Usage::UK_MemberThroughArrow ? VarName + "."
                                                                  : VarName;
+        auto Parents = Context->getParents(*Usage.Expression);
+        if (Parents.size() == 1) {
+          if (const auto *Paren = Parents[0].get<ParenExpr>()) {
+            // Usage.Expression will be replaced with the new index variable,
+            // and parenthesis around a simple DeclRefExpr can always be
+            // removed.
+            Range = Paren->getSourceRange();
+          } else if (const auto *UOP = Parents[0].get<UnaryOperator>()) {
+            // If we are taking the address of the loop variable, then we must
+            // not use a copy, as it would mean taking the address of the loop's
+            // local index instead.
+            // FIXME: This won't catch cases where the address is taken outside
+            // of the loop's body (for instance, in a function that got the
+            // loop's index as a const reference parameter), or where we take
+            // the address of a member (like "&Arr[i].A.B.C").
+            if (UOP->getOpcode() == UO_AddrOf)
+              CanCopy = false;
+          }
+        }
       } else {
         // The Usage expression is only null in case of lambda captures (which
         // are VarDecl). If the index is captured by value, add '&' to capture
@@ -488,7 +547,7 @@ void LoopConvertCheck::doConversion(
       }
       TUInfo->getReplacedVars().insert(std::make_pair(Loop, IndexVar));
       Diag << FixItHint::CreateReplacement(
-          CharSourceRange::getTokenRange(Usage.Range), ReplaceText);
+          CharSourceRange::getTokenRange(Range), ReplaceText);
     }
   }
 
@@ -500,8 +559,10 @@ void LoopConvertCheck::doConversion(
   // If the new variable name is from the aliased variable, then the reference
   // type for the new variable should only be used if the aliased variable was
   // declared as a reference.
-  bool UseCopy = (VarNameFromAlias && !AliasVarIsRef) ||
-                 (Descriptor.DerefByConstRef && Descriptor.IsTriviallyCopyable);
+  bool UseCopy =
+      CanCopy &&
+      ((VarNameFromAlias && !AliasVarIsRef) ||
+       (Descriptor.DerefByConstRef && Descriptor.IsTriviallyCopyable));
 
   if (!UseCopy) {
     if (Descriptor.DerefByConstRef) {
