@@ -48,16 +48,19 @@ void UseUsingCheck::check(const MatchFinder::MatchResult &Result) {
   static const StringRef Message = "use 'using' instead of 'typedef'";
   auto BeginLoc = Typedef->getSourceRange().getBegin();
   if (BeginLoc.isInvalid())
-      return;
+    return;
   DiagnosticBuilder Diag = diag(BeginLoc, Message);
 
-  const auto TypedefRange = SourceRange(BeginLoc, BeginLoc.getLocWithOffset(std::strlen("typedef")));
+  const auto TypedefRange =
+      SourceRange(BeginLoc, BeginLoc.getLocWithOffset(std::strlen("typedef")));
   Diag << FixItHint::CreateReplacement(TypedefRange, "using ");
 
   const SourceLocation NameLoc = Typedef->getLocation();
-  const SourceLocation BeforeNameLoc = backwardSkipWhitespace(NameLoc, SM, Context);
+  const SourceLocation BeforeNameLoc =
+      backwardSkipWhitespace(NameLoc, SM, Context);
   CharSourceRange NameRange = CharSourceRange::getTokenRange(NameLoc, NameLoc);
-  CharSourceRange SpaceNameRange = CharSourceRange::getTokenRange(BeforeNameLoc, NameLoc);
+  CharSourceRange SpaceNameRange =
+      CharSourceRange::getTokenRange(BeforeNameLoc, NameLoc);
 
   const std::string Name = Lexer::getSourceText(NameRange, SM, LangOpts);
   Diag << FixItHint::CreateInsertion(TypedefRange.getEnd(), Name + " =");
@@ -67,4 +70,3 @@ void UseUsingCheck::check(const MatchFinder::MatchResult &Result) {
 } // namespace modernize
 } // namespace tidy
 } // namespace clang
-
