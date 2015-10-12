@@ -218,28 +218,33 @@ StatementMatcher makeIteratorDeclMatcher() {
 }
 
 StatementMatcher makeDeclWithNewMatcher() {
-  return declStmt(has(varDecl()),
-                  unless(has(varDecl(anyOf(
-                      unless(hasInitializer(ignoringParenImpCasts(newExpr()))),
-                      // FIXME: TypeLoc information is not reliable where CV
-                      // qualifiers are concerned so these types can't be
-                      // handled for now.
-                      hasType(pointerType(
-                          pointee(hasCanonicalType(hasLocalQualifiers())))),
+  return declStmt(
+             has(varDecl()),
+             unless(has(varDecl(anyOf(
+                 unless(hasInitializer(ignoringParenImpCasts(cxxNewExpr()))),
+                 // FIXME: TypeLoc information is not reliable where CV
+                 // qualifiers are concerned so these types can't be
+                 // handled for now.
+                 hasType(pointerType(
+                     pointee(hasCanonicalType(hasLocalQualifiers())))),
 
-                      // FIXME: Handle function pointers. For now we ignore them
-                      // because the replacement replaces the entire type
-                      // specifier source range which includes the identifier.
-                      hasType(pointsTo(
-                          pointsTo(parenType(innerType(functionType()))))))))))
+                 // FIXME: Handle function pointers. For now we ignore them
+                 // because the replacement replaces the entire type
+                 // specifier source range which includes the identifier.
+                 hasType(pointsTo(
+                     pointsTo(parenType(innerType(functionType()))))))))))
       .bind(DeclWithNewId);
 }
 
 } // namespace
 
 void UseAutoCheck::registerMatchers(MatchFinder *Finder) {
-  Finder->addMatcher(makeIteratorDeclMatcher(), this);
-  Finder->addMatcher(makeDeclWithNewMatcher(), this);
+  // Only register the matchers for C++; the functionality currently does not
+  // provide any benefit to other languages, despite being benign.
+  if (getLangOpts().CPlusPlus) {
+    Finder->addMatcher(makeIteratorDeclMatcher(), this);
+    Finder->addMatcher(makeDeclWithNewMatcher(), this);
+  }
 }
 
 void UseAutoCheck::replaceIterators(const DeclStmt *D, ASTContext *Context) {
@@ -294,7 +299,7 @@ void UseAutoCheck::replaceIterators(const DeclStmt *D, ASTContext *Context) {
 }
 
 void UseAutoCheck::replaceNew(const DeclStmt *D, ASTContext *Context) {
-  const auto *FirstDecl = cast<VarDecl>(*D->decl_begin());
+  const auto *FirstDecl = dyn_cast<VarDecl>(*D->decl_begin());
   // Ensure that there is at least one VarDecl within the DeclStmt.
   if (!FirstDecl)
     return;

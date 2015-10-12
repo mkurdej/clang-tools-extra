@@ -20,7 +20,7 @@ Example usage for git/svn users:
 
   git diff -U0 HEAD^ | clang-tidy-diff.py -p1
   svn diff --diff-cmd=diff -x-U0 | \
-      clang-tidy-diff.py -fix -checks=-*,misc-use-override
+      clang-tidy-diff.py -fix -checks=-*,modernize-use-override
 
 """
 
@@ -67,7 +67,7 @@ def main():
   filename = None
   lines_by_file = {}
   for line in sys.stdin:
-    match = re.search('^\+\+\+\ \"?(.*?/){%s}([^ \t\"]*)' % args.p, line)
+    match = re.search('^\+\+\+\ \"?(.*?/){%s}([^ \t\n\"]*)' % args.p, line)
     if match:
       filename = match.group(2)
     if filename == None:

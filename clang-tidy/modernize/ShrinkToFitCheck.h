@@ -7,21 +7,21 @@
 //
 //===----------------------------------------------------------------------===//
 
-#ifndef LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_READABILITY_SHRINKTOFITCHECK_H
-#define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_READABILITY_SHRINKTOFITCHECK_H
+#ifndef LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MODERNIZE_SHRINKTOFITCHECK_H
+#define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MODERNIZE_SHRINKTOFITCHECK_H
 
 #include "../ClangTidy.h"
 
 namespace clang {
 namespace tidy {
-namespace readability {
+namespace modernize {
 
-/// \brief Replace copy and swap tricks on shrinkable containers with the
-/// \c shrink_to_fit() method call.
+/// Replace copy and swap tricks on shrinkable containers with the
+/// `shrink_to_fit()` method call.
 ///
-/// The \c shrink_to_fit() method is more readable and more effective than
+/// The `shrink_to_fit()` method is more readable and more effective than
 /// the copy and swap trick to reduce the capacity of a shrinkable container.
-/// Note that, the \c shrink_to_fit() method is only available in C++11 and up.
+/// Note that, the `shrink_to_fit()` method is only available in C++11 and up.
 class ShrinkToFitCheck : public ClangTidyCheck {
 public:
   ShrinkToFitCheck(StringRef Name, ClangTidyContext *Context)
@@ -30,8 +30,8 @@ public:
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 };
 
-} // namespace readability
+} // namespace modernize
 } // namespace tidy
 } // namespace clang
 
-#endif // LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_READABILITY_SHRINKTOFITCHECK_H
+#endif // LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MODERNIZE_SHRINKTOFITCHECK_H

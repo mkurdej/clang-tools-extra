@@ -3,10 +3,14 @@ set(LLVM_LINK_COMPONENTS support)
 add_clang_library(clangTidyModernizeModule
   LoopConvertCheck.cpp
   LoopConvertUtils.cpp
+  MakeUniqueCheck.cpp
   ModernizeTidyModule.cpp
   PassByValueCheck.cpp
+  ReplaceAutoPtrCheck.cpp
+  ShrinkToFitCheck.cpp
   UseAutoCheck.cpp
   UseNullptrCheck.cpp
+  UseOverrideCheck.cpp
   UseUsingCheck.cpp
 
   LINK_LIBS

@@ -19,19 +19,26 @@ namespace misc {
 
 void AssignOperatorSignatureCheck::registerMatchers(
     ast_matchers::MatchFinder *Finder) {
-  const auto HasGoodReturnType = methodDecl(returns(lValueReferenceType(pointee(
-      unless(isConstQualified()), hasDeclaration(equalsBoundNode("class"))))));
+  // Only register the matchers for C++; the functionality currently does not
+  // provide any benefit to other languages, despite being benign.
+  if (!getLangOpts().CPlusPlus)
+    return;
+
+  const auto HasGoodReturnType = cxxMethodDecl(returns(
+      lValueReferenceType(pointee(unless(isConstQualified()),
+                                  hasDeclaration(equalsBoundNode("class"))))));
 
   const auto IsSelf = qualType(
       anyOf(hasDeclaration(equalsBoundNode("class")),
             referenceType(pointee(hasDeclaration(equalsBoundNode("class"))))));
   const auto IsSelfAssign =
-      methodDecl(unless(anyOf(isDeleted(), isPrivate(), isImplicit())),
-                 hasName("operator="), ofClass(recordDecl().bind("class")),
-                 hasParameter(0, parmVarDecl(hasType(IsSelf)))).bind("method");
+      cxxMethodDecl(unless(anyOf(isDeleted(), isPrivate(), isImplicit())),
+                    hasName("operator="), ofClass(recordDecl().bind("class")),
+                    hasParameter(0, parmVarDecl(hasType(IsSelf))))
+          .bind("method");
 
   Finder->addMatcher(
-      methodDecl(IsSelfAssign, unless(HasGoodReturnType)).bind("ReturnType"),
+      cxxMethodDecl(IsSelfAssign, unless(HasGoodReturnType)).bind("ReturnType"),
       this);
 
   const auto BadSelf = referenceType(
@@ -39,11 +46,13 @@ void AssignOperatorSignatureCheck::registerMatchers(
             rValueReferenceType(pointee(isConstQualified()))));
 
   Finder->addMatcher(
-      methodDecl(IsSelfAssign, hasParameter(0, parmVarDecl(hasType(BadSelf))))
+      cxxMethodDecl(IsSelfAssign,
+                    hasParameter(0, parmVarDecl(hasType(BadSelf))))
           .bind("ArgumentType"),
       this);
 
-  Finder->addMatcher(methodDecl(IsSelfAssign, isConst()).bind("Const"), this);
+  Finder->addMatcher(cxxMethodDecl(IsSelfAssign, isConst()).bind("Const"),
+                     this);
 }
 
 

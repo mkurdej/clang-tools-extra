@@ -11,9 +11,13 @@
 #include "../ClangTidyModule.h"
 #include "../ClangTidyModuleRegistry.h"
 #include "LoopConvertCheck.h"
+#include "MakeUniqueCheck.h"
 #include "PassByValueCheck.h"
+#include "ReplaceAutoPtrCheck.h"
+#include "ShrinkToFitCheck.h"
 #include "UseAutoCheck.h"
 #include "UseNullptrCheck.h"
+#include "UseOverrideCheck.h"
 #include "UseUsingCheck.h"
 
 using namespace clang::ast_matchers;
@@ -26,9 +30,15 @@ class ModernizeModule : public ClangTidyModule {
 public:
   void addCheckFactories(ClangTidyCheckFactories &CheckFactories) override {
     CheckFactories.registerCheck<LoopConvertCheck>("modernize-loop-convert");
+    CheckFactories.registerCheck<MakeUniqueCheck>(
+        "modernize-make-unique");
     CheckFactories.registerCheck<PassByValueCheck>("modernize-pass-by-value");
+    CheckFactories.registerCheck<ReplaceAutoPtrCheck>(
+        "modernize-replace-auto-ptr");
+    CheckFactories.registerCheck<ShrinkToFitCheck>("modernize-shrink-to-fit");
     CheckFactories.registerCheck<UseAutoCheck>("modernize-use-auto");
     CheckFactories.registerCheck<UseNullptrCheck>("modernize-use-nullptr");
+    CheckFactories.registerCheck<UseOverrideCheck>("modernize-use-override");
     CheckFactories.registerCheck<UseUsingCheck>("modernize-use-using");
   }
 
@@ -36,7 +46,9 @@ public:
     ClangTidyOptions Options;
     auto &Opts = Options.CheckOptions;
     Opts["modernize-loop-convert.MinConfidence"] = "reasonable";
+    Opts["modernize-loop-convert.NamingStyle"] = "CamelCase";
     Opts["modernize-pass-by-value.IncludeStyle"] = "llvm"; // Also: "google".
+    Opts["modernize-replace-auto-ptr.IncludeStyle"] = "llvm"; // Also: "google".
 
     // Comma-separated list of macros that behave like NULL.
     Opts["modernize-use-nullptr.NullMacros"] = "NULL";

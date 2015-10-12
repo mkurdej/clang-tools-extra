@@ -1,6 +1,6 @@
 // RUN: echo "static void staticFunctionHeader(int i) {}" > %T/header.h
 // RUN: echo "static void staticFunctionHeader(int  /*i*/) {}" > %T/header-fixed.h
-// RUN: %python %S/check_clang_tidy.py %s misc-unused-parameters %t -header-filter='.*' -- -fno-delayed-template-parsing
+// RUN: %python %S/check_clang_tidy.py %s misc-unused-parameters %t -header-filter='.*' -- -std=c++11 -fno-delayed-template-parsing
 // RUN: diff %T/header.h %T/header-fixed.h
 // REQUIRES: shell
 
@@ -25,6 +25,9 @@ void c(int *i) {}
 // ===============
 void g(int i);             // Don't remove stuff in declarations
 void h(int i) { (void)i; } // Don't remove used parameters
+
+bool useLambda(int (*fn)(int));
+static bool static_var = useLambda([] (int a) { return a; });
 
 // Remove parameters of local functions
 // ====================================
