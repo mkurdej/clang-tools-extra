@@ -11,7 +11,7 @@ typedef int my_int_t;
 // CHECK-MESSAGES: :[[@LINE-1]]:1: warning: use 'using' instead of 'typedef' [modernize-use-using]
 // CHECK-FIXES: {{^}}using my_int_t = int;{{$}}
 
-typedef int* my_int_p1_t;
+typedef int *my_int_p1_t;
 // CHECK-MESSAGES: :[[@LINE-1]]:1: warning: use 'using' instead of 'typedef' [modernize-use-using]
 // CHECK-FIXES: {{^}}using my_int_p1_t = int*;{{$}}
 
