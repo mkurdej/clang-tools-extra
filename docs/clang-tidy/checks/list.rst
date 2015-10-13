@@ -4,8 +4,10 @@ List of clang-tidy Checks
 .. toctree::
    cert-setlongjmp
    cert-variadic-function-def
+   cppcoreguidelines-pro-bounds-pointer-arithmetic
    cppcoreguidelines-pro-type-const-cast
    cppcoreguidelines-pro-type-reinterpret-cast
+   cppcoreguidelines-pro-type-static-cast-downcast
    google-build-explicit-make-pair
    google-build-namespaces
    google-build-using-namespace
