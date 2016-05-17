@@ -4,7 +4,7 @@ Clang-Tidy Checks
 =========================
 
 .. toctree::
-
+   boost-use-make-unique
    boost-use-to-string
    cert-dcl03-c (redirects to misc-static-assert) <cert-dcl03-c>
    cert-dcl50-cpp
