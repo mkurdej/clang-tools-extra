@@ -1,4 +1,4 @@
-// RUN: %check_clang_tidy %s misc-unused-using-decls %t
+// RUN: %check_clang_tidy %s misc-unused-using-decls %t -- -- -fno-delayed-template-parsing
 
 // ----- Definitions -----
 template <typename T> class vector {};
@@ -16,6 +16,9 @@ class I {
  public:
   static int ii;
 };
+template <typename T> class J {};
+class G;
+class H;
 
 class Base {
  public:
@@ -29,6 +32,10 @@ int UsedFunc() { return 1; }
 int UnusedFunc() { return 1; }
 template <typename T> int UsedTemplateFunc() { return 1; }
 template <typename T> int UnusedTemplateFunc() { return 1; }
+template <typename T> int UsedInTemplateFunc() { return 1; }
+void OverloadFunc(int);
+void OverloadFunc(double);
+int FuncUsedByUsingDeclInMacro() { return 1; }
 
 class ostream {
 public:
@@ -70,6 +77,17 @@ using n::UnusedFunc; // UnusedFunc
 using n::cout;
 using n::endl;
 
+using n::UsedInTemplateFunc;
+using n::J;
+template <typename T> void Callee() {
+  J<T> j;
+  UsedInTemplateFunc<T>();
+}
+
+using n::OverloadFunc; // OverloadFunc
+// CHECK-MESSAGES: :[[@LINE-1]]:10: warning: using decl 'OverloadFunc' is unused
+// CHECK-FIXES: {{^}}// OverloadFunc
+
 #define DEFINE_INT(name)        \
   namespace INT {               \
   static const int _##name = 1; \
@@ -77,6 +95,29 @@ using n::endl;
   using INT::_##name
 DEFINE_INT(test);
 #undef DEFIND_INT
+
+#define USING_FUNC \
+  using n::FuncUsedByUsingDeclInMacro;
+USING_FUNC
+#undef USING_FUNC
+
+namespace N1 {
+// n::G is used in namespace N2.
+// Currently, the check doesn't support multiple scopes. All the relevant
+// using-decls will be marked as used once we see an usage even the usage is in
+// other scope.
+using n::G;
+}
+
+namespace N2 {
+using n::G;
+void f(G g);
+}
+
+void IgnoreFunctionScope() {
+// Using-decls defined in function scope will be ignored.
+using n::H;
+}
 
 // ----- Usages -----
 void f(B b);
@@ -91,4 +132,3 @@ void g() {
   UsedTemplateFunc<int>();
   cout << endl;
 }
-

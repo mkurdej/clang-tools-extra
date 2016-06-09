@@ -1,4 +1,4 @@
-//===-- FindAllSymbols.cpp - find all symbols -----------------------------===//
+//===-- FindAllSymbols.cpp - find all symbols--------------------*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -8,6 +8,8 @@
 //===----------------------------------------------------------------------===//
 
 #include "FindAllSymbols.h"
+#include "HeaderMapCollector.h"
+#include "PathConfig.h"
 #include "SymbolInfo.h"
 #include "clang/AST/Decl.h"
 #include "clang/AST/DeclCXX.h"
@@ -41,9 +43,9 @@ std::vector<SymbolInfo::Context> GetContexts(const NamedDecl *ND) {
     assert(llvm::isa<NamedDecl>(Context) &&
            "Expect Context to be a NamedDecl");
     if (const auto *NSD = dyn_cast<NamespaceDecl>(Context)) {
-      Contexts.emplace_back(SymbolInfo::ContextType::Namespace,
-                            NSD->isAnonymousNamespace() ? ""
-                                                        : NSD->getName().str());
+      if (!NSD->isInlineNamespace())
+        Contexts.emplace_back(SymbolInfo::ContextType::Namespace,
+                              NSD->getName().str());
     } else if (const auto *ED = dyn_cast<EnumDecl>(Context)) {
       Contexts.emplace_back(SymbolInfo::ContextType::EnumDecl,
                             ED->getName().str());
@@ -56,8 +58,9 @@ std::vector<SymbolInfo::Context> GetContexts(const NamedDecl *ND) {
   return Contexts;
 }
 
-llvm::Optional<SymbolInfo> CreateSymbolInfo(const NamedDecl *ND,
-                                            const SourceManager &SM) {
+llvm::Optional<SymbolInfo>
+CreateSymbolInfo(const NamedDecl *ND, const SourceManager &SM,
+                 const HeaderMapCollector *Collector) {
   SymbolInfo::SymbolKind Type;
   if (llvm::isa<VarDecl>(ND)) {
     Type = SymbolInfo::SymbolKind::Variable;
@@ -69,6 +72,9 @@ llvm::Optional<SymbolInfo> CreateSymbolInfo(const NamedDecl *ND,
     Type = SymbolInfo::SymbolKind::EnumConstantDecl;
   } else if (llvm::isa<EnumDecl>(ND)) {
     Type = SymbolInfo::SymbolKind::EnumDecl;
+    // Ignore anonymous enum declarations.
+    if (ND->getName().empty())
+      return llvm::None;
   } else {
     assert(llvm::isa<RecordDecl>(ND) &&
            "Matched decl must be one of VarDecl, "
@@ -87,11 +93,11 @@ llvm::Optional<SymbolInfo> CreateSymbolInfo(const NamedDecl *ND,
                  << ") has invalid declaration location.";
     return llvm::None;
   }
-  llvm::StringRef FilePath = SM.getFilename(Loc);
-  if (FilePath.empty())
-    return llvm::None;
 
-  return SymbolInfo(ND->getNameAsString(), Type, FilePath.str(),
+  std::string FilePath = getIncludePath(SM, Loc, Collector);
+  if (FilePath.empty()) return llvm::None;
+
+  return SymbolInfo(ND->getNameAsString(), Type, FilePath,
                     SM.getExpansionLineNumber(Loc), GetContexts(ND));
 }
 
@@ -177,10 +183,10 @@ void FindAllSymbols::registerMatchers(MatchFinder *MatchFinder) {
       this);
 
   // Matchers for enum declarations.
-  MatchFinder->addMatcher(
-      enumDecl(CommonFilter, anyOf(HasNSOrTUCtxMatcher, ExternCMatcher))
-          .bind("decl"),
-      this);
+  MatchFinder->addMatcher(enumDecl(CommonFilter, isDefinition(),
+                                   anyOf(HasNSOrTUCtxMatcher, ExternCMatcher))
+                              .bind("decl"),
+                          this);
 
   // Matchers for enum constant declarations.
   // We only match the enum constants in non-scoped enum declarations which are
@@ -204,9 +210,10 @@ void FindAllSymbols::run(const MatchFinder::MatchResult &Result) {
   assert(ND && "Matched declaration must be a NamedDecl!");
   const SourceManager *SM = Result.SourceManager;
 
-  llvm::Optional<SymbolInfo> Symbol = CreateSymbolInfo(ND, *SM);
+  llvm::Optional<SymbolInfo> Symbol =
+      CreateSymbolInfo(ND, *SM, Collector);
   if (Symbol)
-    Reporter->reportResult(
+    Reporter->reportSymbol(
         SM->getFileEntryForID(SM->getMainFileID())->getName(), *Symbol);
 }
 

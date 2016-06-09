@@ -1,4 +1,4 @@
-//===-- FindAllSymbolsTests.cpp - find all symbols unit tests -------------===//
+//===-- FindAllSymbolsTests.cpp - find all symbols unit tests ---*- C++ -*-===//
 //
 //                     The LLVM Compiler Infrastructure
 //
@@ -7,12 +7,15 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "FindAllSymbols.h"
+#include "FindAllSymbolsAction.h"
+#include "HeaderMapCollector.h"
 #include "SymbolInfo.h"
+#include "SymbolReporter.h"
 #include "clang/ASTMatchers/ASTMatchFinder.h"
 #include "clang/Basic/FileManager.h"
 #include "clang/Basic/FileSystemOptions.h"
 #include "clang/Basic/VirtualFileSystem.h"
+#include "clang/Frontend/CompilerInstance.h"
 #include "clang/Frontend/PCHContainerOperations.h"
 #include "clang/Tooling/Tooling.h"
 #include "llvm/ADT/IntrusiveRefCntPtr.h"
@@ -28,17 +31,16 @@ namespace find_all_symbols {
 
 static const char HeaderName[] = "symbols.h";
 
-class MockReporter
-    : public clang::find_all_symbols::FindAllSymbols::ResultReporter {
+class TestSymbolReporter : public clang::find_all_symbols::SymbolReporter {
 public:
-  ~MockReporter() override {}
+  ~TestSymbolReporter() override {}
 
-  void reportResult(llvm::StringRef FileName,
+  void reportSymbol(llvm::StringRef FileName,
                     const SymbolInfo &Symbol) override {
     Symbols.push_back(Symbol);
   }
 
-  bool hasSymbol(const SymbolInfo &Symbol) {
+  bool hasSymbol(const SymbolInfo &Symbol) const {
     for (const auto &S : Symbols) {
       if (S == Symbol)
         return true;
@@ -57,18 +59,38 @@ public:
   }
 
   bool runFindAllSymbols(StringRef Code) {
-    FindAllSymbols matcher(&Reporter);
-    clang::ast_matchers::MatchFinder MatchFinder;
-    matcher.registerMatchers(&MatchFinder);
-
     llvm::IntrusiveRefCntPtr<vfs::InMemoryFileSystem> InMemoryFileSystem(
         new vfs::InMemoryFileSystem);
     llvm::IntrusiveRefCntPtr<FileManager> Files(
         new FileManager(FileSystemOptions(), InMemoryFileSystem));
 
     std::string FileName = "symbol.cc";
-    std::unique_ptr<clang::tooling::FrontendActionFactory> Factory =
-        clang::tooling::newFrontendActionFactory(&MatchFinder);
+
+    const std::string InternalHeader = "internal/internal.h";
+    const std::string TopHeader = "<top>";
+    // Test .inc header path. The header for `IncHeaderClass` should be
+    // internal.h, which will eventually be mapped to <top>.
+    std::string IncHeader = "internal/private.inc";
+    std::string IncHeaderCode = "class IncHeaderClass {};";
+
+    HeaderMapCollector::HeaderMap PostfixMap = {
+        {"internal.h", TopHeader},
+    };
+
+    std::string InternalCode =
+        "#include \"private.inc\"\nclass Internal {};";
+    SymbolInfo InternalSymbol("Internal", SymbolInfo::SymbolKind::Class,
+                              TopHeader, 2, {});
+    SymbolInfo IncSymbol("IncHeaderClass", SymbolInfo::SymbolKind::Class,
+                         TopHeader, 1, {});
+    InMemoryFileSystem->addFile(
+        IncHeader, 0, llvm::MemoryBuffer::getMemBuffer(IncHeaderCode));
+    InMemoryFileSystem->addFile(InternalHeader, 0,
+                                llvm::MemoryBuffer::getMemBuffer(InternalCode));
+
+    std::unique_ptr<clang::tooling::FrontendActionFactory> Factory(
+        new FindAllSymbolsActionFactory(&Reporter, &PostfixMap));
+
     tooling::ToolInvocation Invocation(
         {std::string("find_all_symbols"), std::string("-fsyntax-only"),
          std::string("-std=c++11"), FileName},
@@ -78,15 +100,37 @@ public:
     InMemoryFileSystem->addFile(HeaderName, 0,
                                 llvm::MemoryBuffer::getMemBuffer(Code));
 
-    std::string Content = "#include\"" + std::string(HeaderName) + "\"";
+    std::string Content = "#include\"" + std::string(HeaderName) +
+                          "\"\n"
+                          "#include \"internal/internal.h\"";
+#if !defined(_MSC_VER) && !defined(__MINGW32__)
+    // Test path cleaning for both decls and macros.
+    const std::string DirtyHeader = "./internal/./a/b.h";
+    Content += "\n#include \"" + DirtyHeader + "\"";
+    const std::string CleanHeader = "internal/a/b.h";
+    const std::string DirtyHeaderContent =
+        "#define INTERNAL 1\nclass ExtraInternal {};";
+    InMemoryFileSystem->addFile(
+        DirtyHeader, 0, llvm::MemoryBuffer::getMemBuffer(DirtyHeaderContent));
+    SymbolInfo DirtyMacro("INTERNAL", SymbolInfo::SymbolKind::Macro,
+                          CleanHeader, 1, {});
+    SymbolInfo DirtySymbol("ExtraInternal", SymbolInfo::SymbolKind::Class,
+                           CleanHeader, 2, {});
+#endif // _MSC_VER && __MINGW32__
     InMemoryFileSystem->addFile(FileName, 0,
                                 llvm::MemoryBuffer::getMemBuffer(Content));
     Invocation.run();
+    EXPECT_TRUE(hasSymbol(InternalSymbol));
+    EXPECT_TRUE(hasSymbol(IncSymbol));
+#if !defined(_MSC_VER) && !defined(__MINGW32__)
+    EXPECT_TRUE(hasSymbol(DirtySymbol));
+    EXPECT_TRUE(hasSymbol(DirtyMacro));
+#endif  // _MSC_VER && __MINGW32__
     return true;
   }
 
-private:
-  MockReporter Reporter;
+protected:
+  TestSymbolReporter Reporter;
 };
 
 TEST_F(FindAllSymbolsTest, VariableSymbols) {
@@ -224,7 +268,8 @@ TEST_F(FindAllSymbolsTest, NamespaceTest) {
       int X1;
       namespace { int X2; }
       namespace { namespace { int X3; } }
-      namespace { namespace nb { int X4;} }
+      namespace { namespace nb { int X4; } }
+      namespace na { inline namespace __1 { int X5; } }
       )";
   runFindAllSymbols(Code);
 
@@ -244,6 +289,10 @@ TEST_F(FindAllSymbolsTest, NamespaceTest) {
   Symbol = SymbolInfo("X4", SymbolInfo::SymbolKind::Variable, HeaderName, 5,
                       {{SymbolInfo::ContextType::Namespace, "nb"},
                        {SymbolInfo::ContextType::Namespace, ""}});
+  EXPECT_TRUE(hasSymbol(Symbol));
+
+  Symbol = SymbolInfo("X5", SymbolInfo::SymbolKind::Variable, HeaderName, 6,
+                      {{SymbolInfo::ContextType::Namespace, "na"}});
   EXPECT_TRUE(hasSymbol(Symbol));
 }
 
@@ -285,6 +334,7 @@ TEST_F(FindAllSymbolsTest, EnumTest) {
       public:
         enum A_ENUM { X1, X2 };
       };
+      enum DECL : int;
       )";
   runFindAllSymbols(Code);
 
@@ -316,6 +366,8 @@ TEST_F(FindAllSymbolsTest, EnumTest) {
   Symbol = SymbolInfo("A2", SymbolInfo::SymbolKind::EnumConstantDecl,
                       HeaderName, 4, {{SymbolInfo::ContextType::EnumDecl, ""}});
   EXPECT_TRUE(hasSymbol(Symbol));
+  Symbol = SymbolInfo("", SymbolInfo::SymbolKind::EnumDecl, HeaderName, 4, {});
+  EXPECT_FALSE(hasSymbol(Symbol));
 
   Symbol = SymbolInfo("A_ENUM", SymbolInfo::SymbolKind::EnumDecl, HeaderName, 7,
                       {{SymbolInfo::ContextType::Record, "A"}});
@@ -325,6 +377,60 @@ TEST_F(FindAllSymbolsTest, EnumTest) {
                       {{SymbolInfo::ContextType::EnumDecl, "A_ENUM"},
                        {SymbolInfo::ContextType::Record, "A"}});
   EXPECT_FALSE(hasSymbol(Symbol));
+
+  Symbol =
+      SymbolInfo("DECL", SymbolInfo::SymbolKind::EnumDecl, HeaderName, 9, {});
+  EXPECT_FALSE(hasSymbol(Symbol));
+}
+
+TEST_F(FindAllSymbolsTest, IWYUPrivatePragmaTest) {
+  static const char Code[] = R"(
+    // IWYU pragma: private, include "bar.h"
+    struct Bar {
+    };
+  )";
+  runFindAllSymbols(Code);
+
+  SymbolInfo Symbol =
+      SymbolInfo("Bar", SymbolInfo::SymbolKind::Class, "bar.h", 3, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
+}
+
+TEST_F(FindAllSymbolsTest, MacroTest) {
+  static const char Code[] = R"(
+    #define X
+    #define Y 1
+    #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+  )";
+  runFindAllSymbols(Code);
+  SymbolInfo Symbol =
+      SymbolInfo("X", SymbolInfo::SymbolKind::Macro, HeaderName, 2, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
+
+  Symbol = SymbolInfo("Y", SymbolInfo::SymbolKind::Macro, HeaderName, 3, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
+
+  Symbol = SymbolInfo("MAX", SymbolInfo::SymbolKind::Macro, HeaderName, 4, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
+}
+
+TEST_F(FindAllSymbolsTest, MacroTestWithIWYU) {
+  static const char Code[] = R"(
+    // IWYU pragma: private, include "bar.h"
+    #define X
+    #define Y 1
+    #define MAX(X, Y) ((X) > (Y) ? (X) : (Y))
+  )";
+  runFindAllSymbols(Code);
+  SymbolInfo Symbol =
+      SymbolInfo("X", SymbolInfo::SymbolKind::Macro, "bar.h", 3, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
+
+  Symbol = SymbolInfo("Y", SymbolInfo::SymbolKind::Macro, "bar.h", 4, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
+
+  Symbol = SymbolInfo("MAX", SymbolInfo::SymbolKind::Macro, "bar.h", 5, {});
+  EXPECT_TRUE(hasSymbol(Symbol));
 }
 
 } // namespace find_all_symbols

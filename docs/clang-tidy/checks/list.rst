@@ -63,6 +63,7 @@ Clang-Tidy Checks
    misc-inefficient-algorithm
    misc-macro-parentheses
    misc-macro-repeated-side-effects
+   misc-misplaced-const
    misc-misplaced-widening-cast
    misc-move-const-arg
    misc-move-constructor-init
