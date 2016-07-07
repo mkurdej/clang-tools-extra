@@ -39,7 +39,6 @@ void fPositiveUsing() {
   using boost::make_unique;
   make_unique<MyStruct>(42);
   // CHECK-MESSAGES: :[[@LINE-1]]:3: warning: use std::make_unique instead of boost::make_unique [boost-use-make-unique]
-  // CHECK-FIXES: std::make_unique<MyStruct>(42);{{$}}
 }
 
 void fNegative() {

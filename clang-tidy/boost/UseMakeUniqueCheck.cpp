@@ -21,15 +21,25 @@ void UseMakeUniqueCheck::registerMatchers(MatchFinder *Finder) {
   if (!getLangOpts().CPlusPlus)
     return;
 
-  Finder->addMatcher(callExpr(callee(namedDecl(hasName("boost::make_unique"))),
-                              unless(isInTemplateInstantiation()))
-                         .bind("make_unique"),
-                     this);
+  Finder->addMatcher(
+      callExpr(callee(namedDecl(hasName("boost::make_unique") /*,
+                                hasAnyTemplateArgument().bind("arg")*/)),
+               unless(isInTemplateInstantiation()))
+          .bind("make_unique"),
+      this);
 }
 
 void UseMakeUniqueCheck::check(const MatchFinder::MatchResult &Result) {
   const auto *Call = Result.Nodes.getNodeAs<CallExpr>("make_unique");
   assert(Call);
+
+  const auto *TArg = Result.Nodes.getNodeAs<TemplateArgument>("arg");
+  if (TArg) {
+    Expr *ArgExpr = TArg->getAsExpr();
+    if (ArgExpr) {
+      diag(ArgExpr->getLocStart(), "arg loc");
+    }
+  }
 
   auto Loc = Call->getLocStart();
 
