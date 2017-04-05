@@ -133,6 +133,7 @@ Clang-Tidy Checks
    modernize-use-equals-delete
    modernize-use-nullptr
    modernize-use-override
+   modernize-use-swap
    modernize-use-transparent-functors
    modernize-use-using
    mpi-buffer-deref

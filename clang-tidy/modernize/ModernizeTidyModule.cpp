@@ -29,6 +29,7 @@
 #include "UseEqualsDeleteCheck.h"
 #include "UseNullptrCheck.h"
 #include "UseOverrideCheck.h"
+#include "UseSwapCheck.h"
 #include "UseTransparentFunctorsCheck.h"
 #include "UseUsingCheck.h"
 
@@ -68,6 +69,8 @@ public:
         "modernize-use-equals-delete");
     CheckFactories.registerCheck<UseNullptrCheck>("modernize-use-nullptr");
     CheckFactories.registerCheck<UseOverrideCheck>("modernize-use-override");
+    CheckFactories.registerCheck<UseSwapCheck>(
+        "modernize-use-swap");
     CheckFactories.registerCheck<UseTransparentFunctorsCheck>(
         "modernize-use-transparent-functors");
     CheckFactories.registerCheck<UseUsingCheck>("modernize-use-using");

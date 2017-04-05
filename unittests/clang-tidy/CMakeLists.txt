@@ -13,6 +13,7 @@ add_extra_unittest(ClangTidyTests
   GoogleModuleTest.cpp
   LLVMModuleTest.cpp
   MiscModuleTest.cpp
+  ModernizeModuleTest.cpp
   NamespaceAliaserTest.cpp
   OverlappingReplacementsTest.cpp
   UsingInserterTest.cpp
