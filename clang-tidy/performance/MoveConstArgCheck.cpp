@@ -35,8 +35,16 @@ static void ReplaceCallWithArg(const CallExpr *Call, DiagnosticBuilder &Diag,
   }
 }
 
+MoveConstArgCheck::MoveConstArgCheck(StringRef Name, ClangTidyContext *Context)
+    : ClangTidyCheck(Name, Context), CheckTriviallyCopyableMove(Options.get(
+                                         "CheckTriviallyCopyableMove", true)),
+      RawMoveList(Options.get("MoveFunctions", "::std::move")) {
+  StringRef(RawMoveList).split(MoveFunctions, ",", -1, false);
+}
+
 void MoveConstArgCheck::storeOptions(ClangTidyOptions::OptionMap &Opts) {
   Options.store(Opts, "CheckTriviallyCopyableMove", CheckTriviallyCopyableMove);
+  Options.store(Opts, "MoveFunctions", RawMoveList);
 }
 
 void MoveConstArgCheck::registerMatchers(MatchFinder *Finder) {
@@ -44,8 +52,8 @@ void MoveConstArgCheck::registerMatchers(MatchFinder *Finder) {
     return;
 
   auto MoveCallMatcher =
-      callExpr(callee(functionDecl(hasName("::std::move"))), argumentCountIs(1),
-               unless(isInTemplateInstantiation()))
+      callExpr(callee(functionDecl(hasAnyName(MoveFunctions))),
+               argumentCountIs(1), unless(isInTemplateInstantiation()))
           .bind("call-move");
 
   Finder->addMatcher(MoveCallMatcher, this);

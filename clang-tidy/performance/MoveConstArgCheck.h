@@ -10,6 +10,9 @@
 #define LLVM_CLANG_TOOLS_EXTRA_CLANG_TIDY_MISC_MOVECONSTANTARGUMENTCHECK_H
 
 #include "../ClangTidyCheck.h"
+#include "llvm/ADT/SmallVector.h"
+#include "llvm/ADT/StringRef.h"
+#include <string>
 
 namespace clang {
 namespace tidy {
@@ -23,16 +26,15 @@ namespace performance {
 //      types as their objects are not moved but copied. Enabled by default.
 class MoveConstArgCheck : public ClangTidyCheck {
 public:
-  MoveConstArgCheck(StringRef Name, ClangTidyContext *Context)
-      : ClangTidyCheck(Name, Context),
-        CheckTriviallyCopyableMove(
-            Options.get("CheckTriviallyCopyableMove", true)) {}
+  MoveConstArgCheck(StringRef Name, ClangTidyContext *Context);
   void storeOptions(ClangTidyOptions::OptionMap &Opts) override;
   void registerMatchers(ast_matchers::MatchFinder *Finder) override;
   void check(const ast_matchers::MatchFinder::MatchResult &Result) override;
 
 private:
   const bool CheckTriviallyCopyableMove;
+  const std::string RawMoveList;
+  SmallVector<StringRef, 2> MoveFunctions;
 };
 
 } // namespace performance
